@@ -1,7 +1,7 @@
 #include <stdio.h>
 /**
- * main - Entry point
- * size of char, int, float, and double
+ * main - Prints the size of various types on the computer
+ * 
  * Return: Always 0 (Success)
  */
 int main(void)
