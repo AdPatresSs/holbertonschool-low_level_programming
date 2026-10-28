@@ -1,7 +1,7 @@
 #include <stdio.h>
 /**
  * Main - Entry point
- *
+ * size of char, int, float, and double
  * Return: Always 0 (Success)
  */
 int main(void)
