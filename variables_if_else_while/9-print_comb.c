@@ -18,6 +18,6 @@ putchar(',');
 putchar(' ');
 putchar(n + '0');
 }
-putchar('$\n');
+putchar('\n');
 return (0);
 }
