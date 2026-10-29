@@ -4,7 +4,7 @@
  * main - entry point
  * main - number name*
  * for loop to add comas between each character except 0 and 9
- * result Always 0 (success)
+ * Return: Always 0 (Success)
  */
 int main(void) /* main = Entry point*/
 {
