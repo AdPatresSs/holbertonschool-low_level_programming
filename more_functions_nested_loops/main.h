@@ -2,6 +2,7 @@
 #define MAIN_H
 
 int _isalpha(int c);
+int mul(int a, int b);
 void print_to_98(int n);
 int add(int, int);
 void jack_bauer(void);
