@@ -1,8 +1,9 @@
 #include "main.h"
 /**
-* _memset - remplit les n premiers octets de la zone mémoire pointée par s avec l'octet b
+* _memset - remplit les n premiers octets de la zone mémoire
+* pointée par s avec l'octet b
 * @s: pointeur vers la zone mémoire à remplir
-* @b: l'octet constant avec lequel remplir la mémoire 
+* @b: l'octet constant avec lequel remplir la mémoire
 * @n: nombre d'octets à modifier
 * Return: un pointeur vers la zone mémoire s
 */
