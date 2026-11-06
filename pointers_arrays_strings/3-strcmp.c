@@ -5,7 +5,7 @@
 * @s1: première chaîne à comparer
 * @s2: seconde chaîne à comparer
 * Return: 0 si les chaînes sont identiques, 
-*         un nombre négatif si s1 < s2, 
+*         un nombre négatif si s1 < s2,
 *         un nombre positif si s1 > s2
 */
 int _strcmp(char *s1, char *s2)
