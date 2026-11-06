@@ -17,7 +17,7 @@ while (*s != '\0')
 {
 l = letters;
 n = numbers;
-      
+
 while (*l != '\0')
 {
 if (*s == *l)
