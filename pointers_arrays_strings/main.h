@@ -15,5 +15,7 @@ char *_strcpy(char *dest, char *src);
 int _atoi(char *s);
 char *leet(char *);
 char *_strcat(char *dest, char *src);
+char *_memset(char *s, char b, unsigned int n);
+void print_chessboard(char (*a)[8]);
 
 #endif /* MAIN_H */
