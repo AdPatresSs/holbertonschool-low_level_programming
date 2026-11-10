@@ -18,6 +18,8 @@ printf("0) Quit\n");
 scanf("%d", &choice);
 if (choice == 0)
 printf("Bye!\n");
+if (choice > 4)
+printf("Invalid choice\n");
 
 return (0);
 }
