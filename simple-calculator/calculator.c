@@ -20,6 +20,19 @@ if (choice == 0)
 printf("Bye!\n");
 if (choice > 4)
 printf("Invalid choice\n");
+if (choice == 1)
+{
+	int a;
+	int b;
 
+	printf("A: ");
+	scanf("%d", &a);
+
+	printf("B: ");
+	scanf("%d", &b);
+
+	printf("Result: %d\n", a + b);
+	return (0);
+}
 return (0);
 }
