@@ -34,5 +34,20 @@ if (choice == 1)
 	printf("Result: %d\n", a + b);
 	return (0);
 }
+
+if (choice == 2)
+{
+	int a;
+	int b;
+
+	printf("A: ");
+	scanf("%d", &a);
+
+	printf("B: ");
+	scanf("%d", &b);
+
+	printf("Result: %d\n", a - b);
+	return (0);
+}
 return (0);
 }
