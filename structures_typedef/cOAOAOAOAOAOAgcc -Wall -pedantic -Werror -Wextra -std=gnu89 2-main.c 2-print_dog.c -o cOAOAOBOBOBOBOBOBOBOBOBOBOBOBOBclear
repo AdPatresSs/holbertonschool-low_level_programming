@@ -1,0 +1,879 @@
+[4mVALGRIND[24m(1)                                                                                     valgrind                                                                                     [4mVALGRIND[24m(1)
+
+[1mNAME[0m
+       valgrind - a suite of tools for debugging and profiling programs
+
+[1mSYNOPSIS[0m
+
+       [1mvalgrind [22m[[4mvalgrind-options[24m] [[4myour-program[24m] [[4myour-program-options[24m]
+
+[1mDESCRIPTION[0m
+       [1mValgrind [22mis a flexible program for debugging and profiling Linux executables. It consists of a core, which provides a synthetic CPU in software, and a series of debugging and profiling tools.
+       The architecture is modular, so that new tools can be created easily and without disturbing the existing structure.
+
+       Some of the options described below work with all Valgrind tools, and some only work with a few or one. The section MEMCHECK OPTIONS and those below it describe tool-specific options.
+
+       This manual page covers only basic usage and options. For more comprehensive information, please see the HTML documentation on your system: $INSTALL/share/doc/valgrind/html/index.html, or
+       online: http://www.valgrind.org/docs/manual/index.html.
+
+[1mTOOL SELECTION OPTIONS[0m
+       The single most important option.
+
+       [1m--tool=<toolname> [default: memcheck][0m
+           Run the Valgrind tool called [4mtoolname[24m, e.g. memcheck, cachegrind, callgrind, helgrind, drd, massif, dhat, lackey, none, exp-bbv, etc.
+
+[1mBASIC OPTIONS[0m
+       These options work with all tools.
+
+       [1m-h --help[0m
+           Show help for all options, both for the core and for the selected tool. If the option is repeated it is equivalent to giving [1m--help-debug[22m.
+
+       [1m--help-debug[0m
+           Same as [1m--help[22m, but also lists debugging options which usually are only of use to Valgrind's developers.
+
+       [1m--version[0m
+           Show the version number of the Valgrind core. Tools can have their own version numbers. There is a scheme in place to ensure that tools only execute when the core version is one they are
+           known to work with. This was done to minimise the chances of strange problems arising from tool-vs-core version incompatibilities.
+
+       [1m-q[22m, [1m--quiet[0m
+           Run silently, and only print error messages. Useful if you are running regression tests or have some other automated test machinery.
+
+       [1m-v[22m, [1m--verbose[0m
+           Be more verbose. Gives extra information on various aspects of your program, such as: the shared objects loaded, the suppressions used, the progress of the instrumentation and execution
+           engines, and warnings about unusual behaviour. Repeating the option increases the verbosity level.
+
+       [1m--trace-children=<yes|no> [default: no][0m
+           When enabled, Valgrind will trace into sub-processes initiated via the [4mexec[24m system call. This is necessary for multi-process programs.
+
+           Note that Valgrind does trace into the child of a [4mfork[24m (it would be difficult not to, since [4mfork[24m makes an identical copy of a process), so this option is arguably badly named. However, most
+           children of [4mfork[24m calls immediately call [4mexec[24m anyway.
+
+       [1m--trace-children-skip=patt1,patt2,...[0m
+           This option only has an effect when [1m--trace-children=yes [22mis specified. It allows for some children to be skipped. The option takes a comma separated list of patterns for the names of child
+           executables that Valgrind should not trace into. Patterns may include the metacharacters ?  and *, which have the usual meaning.
+
+           This can be useful for pruning uninteresting branches from a tree of processes being run on Valgrind. But you should be careful when using it. When Valgrind skips tracing into an
+           executable, it doesn't just skip tracing that executable, it also skips tracing any of that executable's child processes. In other words, the flag doesn't merely cause tracing to stop at
+           the specified executables -- it skips tracing of entire process subtrees rooted at any of the specified executables.
+
+       [1m--trace-children-skip-by-arg=patt1,patt2,...[0m
+           This is the same as [1m--trace-children-skip[22m, with one difference: the decision as to whether to trace into a child process is made by examining the arguments to the child process, rather than
+           the name of its executable.
+
+       [1m--child-silent-after-fork=<yes|no> [default: no][0m
+           When enabled, Valgrind will not show any debugging or logging output for the child process resulting from a [4mfork[24m call. This can make the output less confusing (although more misleading)
+           when dealing with processes that create children. It is particularly useful in conjunction with [4m--trace-children=[24m. Use of this option is also strongly recommended if you are requesting XML
+           output ([4m--xml=yes[24m), since otherwise the XML from child and parent may become mixed up, which usually makes it useless.
+
+       [1m--vgdb=<no|yes|full> [default: yes][0m
+           Valgrind will provide "gdbserver" functionality when [1m--vgdb=yes [22mor [1m--vgdb=full [22mis specified. This allows an external GNU GDB debugger to control and debug your program when it runs on
+           Valgrind.  [1m--vgdb=full [22mincurs significant performance overheads, but provides more precise breakpoints and watchpoints. See Debugging your program using Valgrind's gdbserver and GDB for a
+           detailed description.
+
+           If the embedded gdbserver is enabled but no gdb is currently being used, the vgdb command line utility can send "monitor commands" to Valgrind from a shell. The Valgrind core provides a set
+           of Valgrind monitor commands. A tool can optionally provide tool specific monitor commands, which are documented in the tool specific chapter.
+
+       [1m--vgdb-error=<number> [default: 999999999][0m
+           Use this option when the Valgrind gdbserver is enabled with [1m--vgdb=yes [22mor [1m--vgdb=full[22m. Tools that report errors will wait for "number" errors to be reported before freezing the program and
+           waiting for you to connect with GDB. It follows that a value of zero will cause the gdbserver to be started before your program is executed. This is typically used to insert GDB breakpoints
+           before execution, and also works with tools that do not report errors, such as Massif.
+
+       [1m--vgdb-stop-at=<set> [default: none][0m
+           Use this option when the Valgrind gdbserver is enabled with [1m--vgdb=yes [22mor [1m--vgdb=full[22m. The Valgrind gdbserver will be invoked for each error after [1m--vgdb-error [22mhave been reported. You can
+           additionally ask the Valgrind gdbserver to be invoked for other events, specified in one of the following ways:
+
+           •   a comma separated list of one or more of [1mstartup exit abexit valgrindabexit[22m.
+
+               The values [1mstartup exit valgrindabexit [22mrespectively indicate to invoke gdbserver before your program is executed, after the last instruction of your program, on Valgrind abnormal exit
+               (e.g. internal error, out of memory, ...).
+
+               The option [1mabexit [22mis similar to [1mexit [22mbut tells to invoke gdbserver only when your application exits abnormally (i.e. with an exit code different of 0).
+
+               Note: [1mstartup [22mand [1m--vgdb-error=0 [22mwill both cause Valgrind gdbserver to be invoked before your program is executed. The [1m--vgdb-error=0 [22mwill in addition cause your program to stop on all
+               subsequent errors.
+
+           •   [1mall [22mto specify the complete set. It is equivalent to [1m--vgdb-stop-at=startup,exit,abexit,valgrindabexit[22m.
+
+           •   [1mnone [22mfor the empty set.
+
+       [1m--track-fds=<yes|no|all|bad> [default: no][0m
+           When enabled, Valgrind will track all file descriptor usage. It will produce errors for bad file descriptor usage like closing a file descriptor twice, using a file descriptor (number) that
+           was never created, or passing an already closed file descriptor to a system call. It will also print out a list of open file descriptors on exit. Or on request, via the gdbserver monitor
+           command [4mv.info[24m [4mopen_fds[24m.
+
+           When an error is generated, or when listing the still open file descriptors at exit, a stack backtrace of where the file was opened is printed. If the file descriptor has already been
+           closed, it will also include a backtrace of where it was previously closed. Any error will include details relating to the file descriptor such as the file name or socket details.
+
+           Use [1mall [22mto also include reporting on stdin, stdout and stderr (or other inherited file descriptors) at exit. If [1mbad [22moption is used, then exclude reporting on leaked file descriptors at exit
+           and only produce errors about bad file decriptors usage.
+
+       [1m--modify-fds=<no|yes|high> [default: no][0m
+           When enabled, when the program opens a new file descriptor, the highest available file descriptor is returned instead of the lowest one. Use [1myes [22mto restrict the feature from the 0/1/2 file
+           descriptors as they're often used for stdout/stderr redirection.
+
+       [1m--time-stamp=<yes|no> [default: no][0m
+           When enabled, each message is preceded with an indication of the elapsed wallclock time since startup, expressed as days, hours, minutes, seconds and milliseconds.
+
+       [1m--log-fd=<number> [default: 2, stderr][0m
+           Specifies that Valgrind should send all of its messages to the specified file descriptor. The default, 2, is the standard error channel (stderr). Note that this may interfere with the
+           client's own use of stderr, as Valgrind's output will be interleaved with any output that the client sends to stderr.
+
+       [1m--log-file=<filename>[0m
+           Specifies that Valgrind should send all of its messages to the specified file. If the file name is empty, it causes an abort. There are three special format specifiers that can be used in
+           the file name.
+
+           [1m%p [22mis replaced with the current process ID. This is very useful for program that invoke multiple processes. WARNING: If you use [1m--trace-children=yes [22mand your program invokes multiple
+           processes OR your program forks without calling exec afterwards, and you don't use this specifier (or the [1m%q [22mspecifier below), the Valgrind output from all those processes will go into one
+           file, possibly jumbled up, and possibly incomplete. Note: If the program forks and calls exec afterwards, Valgrind output of the child from the period between fork and exec will be lost.
+           Fortunately this gap is really tiny for most programs; and modern programs use posix_spawn anyway.
+
+           [1m%n [22mis replaced with a file sequence number unique for this process. This is useful for processes that produces several files from the same filename template.
+
+           [1m%q{FOO} [22mis replaced with the contents of the environment variable [4mFOO[24m. If the [1m{FOO} [22mpart is malformed, it causes an abort. This specifier is rarely needed, but very useful in certain
+           circumstances (eg. when running MPI programs). The idea is that you specify a variable which will be set differently for each process in the job, for example BPROC_RANK or whatever is
+           applicable in your MPI setup. If the named environment variable is not set, it causes an abort. Note that in some shells, the [1m{ [22mand [1m} [22mcharacters may need to be escaped with a backslash.
+
+           [1m%% [22mis replaced with [1m%[22m.
+
+           If an [1m% [22mis followed by any other character, it causes an abort.
+
+           If the file name specifies a relative file name, it is put in the program's initial working directory: this is the current directory when the program started its execution after the fork or
+           after the exec. If it specifies an absolute file name (ie. starts with '/') then it is put there.
+
+       [1m--log-socket=<ip-address:port-number>[0m
+           Specifies that Valgrind should send all of its messages to the specified port at the specified IP address. The port may be omitted, in which case port 1500 is used. If a connection cannot
+           be made to the specified socket, Valgrind falls back to writing output to the standard error (stderr). This option is intended to be used in conjunction with the valgrind-listener program.
+           For further details, see the commentary in the manual.
+
+       [1m--enable-debuginfod=<no|yes> [default: yes][0m
+           When enabled Valgrind will attempt to download missing debuginfo from debuginfod servers if space-separated server URLs are present in the $DEBUGINFOD_URLS environment variable. This option
+           is supported on Linux only.
+
+[1mERROR-RELATED OPTIONS[0m
+       These options are used by all tools that can report errors, e.g. Memcheck, but not Cachegrind.
+
+       [1m--xml=<yes|no> [default: no][0m
+           When enabled, the important parts of the output (e.g. tool error messages) will be in XML format rather than plain text. Furthermore, the XML output will be sent to a different output
+           channel than the plain text output. Therefore, you also must use one of [1m--xml-fd[22m, [1m--xml-file [22mor [1m--xml-socket [22mto specify where the XML is to be sent.
+
+           Less important messages will still be printed in plain text, but because the XML output and plain text output are sent to different output channels (the destination of the plain text output
+           is still controlled by [1m--log-fd[22m, [1m--log-file [22mand [1m--log-socket[22m) this should not cause problems.
+
+           This option is aimed at making life easier for tools that consume Valgrind's output as input, such as GUI front ends. Currently this option works with Memcheck, Helgrind and DRD. The output
+           format is specified in the file docs/internals/xml-output-protocol4.txt in the source tree for Valgrind 3.5.0 or later.
+
+           The recommended options for a GUI to pass, when requesting XML output, are: [1m--xml=yes [22mto enable XML output, [1m--xml-file [22mto send the XML output to a (presumably GUI-selected) file, [1m--log-file[0m
+           to send the plain text output to a second GUI-selected file, [1m--child-silent-after-fork=yes[22m, and [1m-q [22mto restrict the plain text output to critical error messages created by Valgrind itself.
+           For example, failure to read a specified suppressions file counts as a critical error message. In this way, for a successful run the text output file will be empty. But if it isn't empty,
+           then it will contain important information which the GUI user should be made aware of.
+
+       [1m--xml-fd=<number> [default: -1, disabled][0m
+           Specifies that Valgrind should send its XML output to the specified file descriptor. It must be used in conjunction with [1m--xml=yes[22m.
+
+       [1m--xml-file=<filename>[0m
+           Specifies that Valgrind should send its XML output to the specified file. It must be used in conjunction with [1m--xml=yes[22m. Any [1m%p [22mor [1m%q [22msequences appearing in the filename are expanded in
+           exactly the same way as they are for [1m--log-file[22m. See the description of --log-file for details.
+
+       [1m--xml-socket=<ip-address:port-number>[0m
+           Specifies that Valgrind should send its XML output the specified port at the specified IP address. It must be used in conjunction with [1m--xml=yes[22m. The form of the argument is the same as
+           that used by [1m--log-socket[22m. See the description of [1m--log-socket [22mfor further details.
+
+       [1m--xml-user-comment=<string>[0m
+           Embeds an extra user comment string at the start of the XML output. Only works when [1m--xml=yes [22mis specified; ignored otherwise.
+
+       [1m--demangle=<yes|no> [default: yes][0m
+           Enable/disable automatic demangling (decoding) of C++, D, Rust, Java, Ada names. Enabled by default. When enabled, Valgrind will attempt to translate encoded names in the listed languages
+           back to something approaching the original. Note that the callgrind tool always disables Ada demangling in order to differentiate overloaded functions and procedures in the callgraph. The
+           demangler handles symbols mangled by g++ versions 2.X, 3.X and 4.X.
+
+           An important fact about demangling is that function names mentioned in suppressions files should be in their mangled form. Valgrind does not demangle function names when searching for
+           applicable suppressions, because to do otherwise would make suppression file contents dependent on the state of Valgrind's demangling machinery, and also slow down suppression matching.
+
+       [1m--num-callers=<number> [default: 12][0m
+           Specifies the maximum number of entries shown in stack traces that identify program locations. Note that errors are commoned up using only the top four function locations (the place in the
+           current function, and that of its three immediate callers). So this doesn't affect the total number of errors reported.
+
+           The maximum value for this is 500. Note that higher settings will make Valgrind run a bit more slowly and take a bit more memory, but can be useful when working with programs with
+           deeply-nested call chains.
+
+       [1m--unw-stack-scan-thresh=<number> [default: 0] [22m, [1m--unw-stack-scan-frames=<number> [default: 5][0m
+           Stack-scanning support is available only on ARM targets.
+
+           These flags enable and control stack unwinding by stack scanning. When the normal stack unwinding mechanisms -- usage of Dwarf CFI records, and frame-pointer following -- fail, stack
+           scanning may be able to recover a stack trace.
+
+           Note that stack scanning is an imprecise, heuristic mechanism that may give very misleading results, or none at all. It should be used only in emergencies, when normal unwinding fails, and
+           it is important to nevertheless have stack traces.
+
+           Stack scanning is a simple technique: the unwinder reads words from the stack, and tries to guess which of them might be return addresses, by checking to see if they point just after ARM or
+           Thumb call instructions. If so, the word is added to the backtrace.
+
+           The main danger occurs when a function call returns, leaving its return address exposed, and a new function is called, but the new function does not overwrite the old address. The result of
+           this is that the backtrace may contain entries for functions which have already returned, and so be very confusing.
+
+           A second limitation of this implementation is that it will scan only the page (4KB, normally) containing the starting stack pointer. If the stack frames are large, this may result in only a
+           few (or not even any) being present in the trace. Also, if you are unlucky and have an initial stack pointer near the end of its containing page, the scan may miss all interesting frames.
+
+           By default stack scanning is disabled. The normal use case is to ask for it when a stack trace would otherwise be very short. So, to enable it, use --unw-stack-scan-thresh=number. This
+           requests Valgrind to try using stack scanning to "extend" stack traces which contain fewer than number frames.
+
+           If stack scanning does take place, it will only generate at most the number of frames specified by --unw-stack-scan-frames. Typically, stack scanning generates so many garbage entries that
+           this value is set to a low value (5) by default. In no case will a stack trace larger than the value specified by --num-callers be created.
+
+       [1m--error-limit=<yes|no> [default: yes][0m
+           When enabled, Valgrind stops reporting errors after 10,000,000 in total, or 1,000 different ones, have been seen. This is to stop the error tracking machinery from becoming a huge
+           performance overhead in programs with many errors.
+
+       [1m--error-exitcode=<number> [default: 0][0m
+           Specifies an alternative exit code to return if Valgrind reported any errors in the run. When set to the default value (zero), the return value from Valgrind will always be the return value
+           of the process being simulated. When set to a nonzero value, that value is returned instead, if Valgrind detects any errors. This is useful for using Valgrind as part of an automated test
+           suite, since it makes it easy to detect test cases for which Valgrind has reported errors, just by inspecting return codes. When set to a nonzero value and Valgrind detects no error, the
+           return value of Valgrind will be the return value of the program being simulated.
+
+       [1m--exit-on-first-error=<yes|no> [default: no][0m
+           If this option is enabled, Valgrind exits on the first error. A nonzero exit value must be defined using --error-exitcode option. Useful if you are running regression tests or have some
+           other automated test machinery.
+
+       [1m--error-markers=<begin>,<end> [default: none][0m
+           When errors are output as plain text (i.e. XML not used), [1m--error-markers [22minstructs to output a line containing the [1mbegin [22m([1mend[22m) string before (after) each error.
+
+           Such marker lines facilitate searching for errors and/or extracting errors in an output file that contain valgrind errors mixed with the program output.
+
+           Note that empty markers are accepted. So, only using a begin (or an end) marker is possible.
+
+       [1m--show-error-list=no|yes|all [default: no][0m
+           If this option is yes, for tools that report errors, valgrind will show the list of detected errors and the list of used suppressions at exit. The value all indicates to also show the list
+           of suppressed errors.
+
+           Note that at verbosity 2 and above, valgrind automatically shows the list of detected errors and the list of used suppressions at exit, unless [1m--show-error-list=no [22mis selected.
+
+       [1m-s[0m
+           Specifying [1m-s [22mis equivalent to [1m--show-error-list=yes[22m.
+
+       [1m--sigill-diagnostics=<yes|no> [default: yes][0m
+           Enable/disable printing of illegal instruction diagnostics. Enabled by default, but defaults to disabled when [1m--quiet [22mis given. The default can always be explicitly overridden by giving
+           this option.
+
+           When enabled, a warning message will be printed, along with some diagnostics, whenever an instruction is encountered that Valgrind cannot decode or translate, before the program is given a
+           SIGILL signal. Often an illegal instruction indicates a bug in the program or missing support for the particular instruction in Valgrind. But some programs do deliberately try to execute an
+           instruction that might be missing and trap the SIGILL signal to detect processor features. Using this flag makes it possible to avoid the diagnostic output that you would otherwise get in
+           such cases.
+
+       [1m--keep-debuginfo=<yes|no> [default: no][0m
+           When enabled, keep ("archive") symbols and all other debuginfo for unloaded code. This allows saved stack traces to include file/line info for code that has been dlclose'd (or similar). Be
+           careful with this, since it can lead to unbounded memory use for programs which repeatedly load and unload shared objects.
+
+           Some tools and some functionalities have only limited support for archived debug info. Memcheck fully supports it. Generally, tools that report errors can use archived debug info to show
+           the error stack traces. The known limitations are: Helgrind's past access stack trace of a race condition is does not use archived debug info. Massif (and more generally the xtree Massif
+           output format) does not make use of archived debug info. Only Memcheck has been (somewhat) tested with [1m--keep-debuginfo=yes[22m, so other tools may have unknown limitations.
+
+       [1m--show-below-main=<yes|no> [default: no][0m
+           By default, stack traces for errors do not show any functions that appear beneath [1mmain [22mbecause most of the time it's uninteresting C library stuff and/or gobbledygook. Alternatively, if
+           [1mmain [22mis not present in the stack trace, stack traces will not show any functions below [1mmain[22m-like functions such as glibc's [1m__libc_start_main[22m. Furthermore, if [1mmain[22m-like functions are present
+           in the trace, they are normalised as [1m(below main)[22m, in order to make the output more deterministic.
+
+           If this option is enabled, all stack trace entries will be shown and [1mmain[22m-like functions will not be normalised.
+
+       [1m--fullpath-after=<string> [default: don't show source paths][0m
+           By default Valgrind only shows the filenames in stack traces, but not full paths to source files. When using Valgrind in large projects where the sources reside in multiple different
+           directories, this can be inconvenient.  [1m--fullpath-after [22mprovides a flexible solution to this problem. When this option is present, the path to each source file is shown, with the following
+           all-important caveat: if [1mstring [22mis found in the path, then the path up to and including [1mstring [22mis omitted, else the path is shown unmodified. Note that [1mstring [22mis not required to be a prefix
+           of the path.
+
+           For example, consider a file named /home/janedoe/blah/src/foo/bar/xyzzy.c. Specifying [1m--fullpath-after=/home/janedoe/blah/src/ [22mwill cause Valgrind to show the name as foo/bar/xyzzy.c.
+
+           Because the string is not required to be a prefix, [1m--fullpath-after=src/ [22mwill produce the same output. This is useful when the path contains arbitrary machine-generated characters. For
+           example, the path /my/build/dir/C32A1B47/blah/src/foo/xyzzy can be pruned to foo/xyzzy using [1m--fullpath-after=/blah/src/[22m.
+
+           If you simply want to see the full path, just specify an empty string: [1m--fullpath-after=[22m. This isn't a special case, merely a logical consequence of the above rules.
+
+           Finally, you can use [1m--fullpath-after [22mmultiple times. Any appearance of it causes Valgrind to switch to producing full paths and applying the above filtering rule. Each produced path is
+           compared against all the [1m--fullpath-after[22m-specified strings, in the order specified. The first string to match causes the path to be truncated as described above. If none match, the full
+           path is shown. This facilitates chopping off prefixes when the sources are drawn from a number of unrelated directories.
+
+       [1m--extra-debuginfo-path=<path> [default: undefined and unused][0m
+           By default Valgrind searches in several well-known paths for debug objects, such as /usr/lib/debug/.
+
+           However, there may be scenarios where you may wish to put debug objects at an arbitrary location, such as external storage when running Valgrind on a mobile device with limited local
+           storage. Another example might be a situation where you do not have permission to install debug object packages on the system where you are running Valgrind.
+
+           In these scenarios, you may provide an absolute path as an extra, final place for Valgrind to search for debug objects by specifying [1m--extra-debuginfo-path=/path/to/debug/objects[22m. The given
+           path will be prepended to the absolute path name of the searched-for object. For example, if Valgrind is looking for the debuginfo for /w/x/y/zz.so and [1m--extra-debuginfo-path=/a/b/c [22mis
+           specified, it will look for a debug object at /a/b/c/w/x/y/zz.so.
+
+           This flag should only be specified once. If it is specified multiple times, only the last instance is honoured.
+
+       [1m--debuginfo-server=ipaddr:port [default: undefined and unused][0m
+           This is a new, experimental, feature introduced in version 3.9.0.
+
+           In some scenarios it may be convenient to read debuginfo from objects stored on a different machine. With this flag, Valgrind will query a debuginfo server running on ipaddr and listening
+           on port port, if it cannot find the debuginfo object in the local filesystem.
+
+           The debuginfo server must accept TCP connections on port port. The debuginfo server is contained in the source file auxprogs/valgrind-di-server.c. It will only serve from the directory it
+           is started in.  port defaults to 1500 in both client and server if not specified.
+
+           If Valgrind looks for the debuginfo for /w/x/y/zz.so by using the debuginfo server, it will strip the pathname components and merely request zz.so on the server. That in turn will look only
+           in its current working directory for a matching debuginfo object.
+
+           The debuginfo data is transmitted in small fragments (8 KB) as requested by Valgrind. Each block is compressed using LZO to reduce transmission time. The implementation has been tuned for
+           best performance over a single-stage 802.11g (WiFi) network link.
+
+           Note that checks for matching primary vs debug objects, using GNU debuglink CRC scheme, are performed even when using the debuginfo server. To disable such checking, you need to also
+           specify --allow-mismatched-debuginfo=yes.
+
+           By default the Valgrind build system will build valgrind-di-server for the target platform, which is almost certainly not what you want. So far we have been unable to find out how to get
+           automake/autoconf to build it for the build platform. If you want to use it, you will have to recompile it by hand using the command shown at the top of auxprogs/valgrind-di-server.c.
+
+           Valgrind can also download debuginfo via debuginfod. See the DEBUGINFOD section for more information.
+
+       [1m--allow-mismatched-debuginfo=no|yes [no][0m
+           When reading debuginfo from separate debuginfo objects, Valgrind will by default check that the main and debuginfo objects match, using the GNU debuglink mechanism. This guarantees that it
+           does not read debuginfo from out of date debuginfo objects, and also ensures that Valgrind can't crash as a result of mismatches.
+
+           This check can be overridden using --allow-mismatched-debuginfo=yes. This may be useful when the debuginfo and main objects have not been split in the proper way. Be careful when using
+           this, though: it disables all consistency checking, and Valgrind has been observed to crash when the main and debuginfo objects don't match.
+
+       [1m--suppressions=<filename> [default: $PREFIX/lib/valgrind/default.supp][0m
+           Specifies an extra file from which to read descriptions of errors to suppress. You may use up to 100 extra suppression files.
+
+       [1m--gen-suppressions=<yes|no|all> [default: no][0m
+           When set to [4myes[24m, Valgrind will pause after every error shown and print the line:
+
+                   ---- Print suppression ? --- [Return/N/n/Y/y/C/c] ----
+
+           Pressing [4mRet[24m, or [4mN[24m [4mRet[24m or [4mn[24m [4mRet[24m, causes Valgrind continue execution without printing a suppression for this error.
+
+           Pressing [4mY[24m [4mRet[24m or [4my[24m [4mRet[24m causes Valgrind to write a suppression for this error. You can then cut and paste it into a suppression file if you don't want to hear about the error in the future.
+
+           When set to [4mall[24m, Valgrind will print a suppression for every reported error, without querying the user.
+
+           This option is particularly useful with C++ programs, as it prints out the suppressions with mangled names, as required.
+
+           Note that the suppressions printed are as specific as possible. You may want to common up similar ones, by adding wildcards to function names, and by using frame-level wildcards. The
+           wildcarding facilities are powerful yet flexible, and with a bit of careful editing, you may be able to suppress a whole family of related errors with only a few suppressions.
+
+           Sometimes two different errors are suppressed by the same suppression, in which case Valgrind will output the suppression more than once, but you only need to have one copy in your
+           suppression file (but having more than one won't cause problems). Also, the suppression name is given as <insert a suppression name here>; the name doesn't really matter, it's only used
+           with the [1m-v [22moption which prints out all used suppression records.
+
+       [1m--input-fd=<number> [default: 0, stdin][0m
+           When using [1m--gen-suppressions=yes[22m, Valgrind will stop so as to read keyboard input from you when each error occurs. By default it reads from the standard input (stdin), which is problematic
+           for programs which close stdin. This option allows you to specify an alternative file descriptor from which to read input.
+
+       [1m--dsymutil=no|yes [yes][0m
+           This option is only relevant when running Valgrind on macOS.
+
+           macOS uses a deferred debug information (debuginfo) linking scheme. When object files containing debuginfo are linked into a .dylib or an executable, the debuginfo is not copied into the
+           final file. Instead, the debuginfo must be linked manually by running dsymutil, a system-provided utility, on the executable or .dylib. The resulting combined debuginfo is placed in a
+           directory alongside the executable or .dylib, but with the extension .dSYM.
+
+           With [1m--dsymutil=no[22m, Valgrind will detect cases where the .dSYM directory is either missing, or is present but does not appear to match the associated executable or .dylib, most likely
+           because it is out of date. In these cases, Valgrind will print a warning message but take no further action.
+
+           With [1m--dsymutil=yes[22m, Valgrind will, in such cases, automatically run dsymutil as necessary to bring the debuginfo up to date. For all practical purposes, if you always use [1m--dsymutil=yes[22m,
+           then there is never any need to run dsymutil manually or as part of your applications's build system, since Valgrind will run it as necessary.
+
+           Valgrind will not attempt to run dsymutil on any executable or library in /usr/, /bin/, /sbin/, /opt/, /sw/, /System/, /Library/ or /Applications/ since dsymutil will always fail in such
+           situations. It fails both because the debuginfo for such pre-installed system components is not available anywhere, and also because it would require write privileges in those directories.
+
+           Be careful when using [1m--dsymutil=yes[22m, since it will cause pre-existing .dSYM directories to be silently deleted and re-created. Also note that dsymutil is quite slow, sometimes excessively
+           so.
+
+       [1m--max-stackframe=<number> [default: 2000000][0m
+           The maximum size of a stack frame. If the stack pointer moves by more than this amount then Valgrind will assume that the program is switching to a different stack.
+
+           You may need to use this option if your program has large stack-allocated arrays. Valgrind keeps track of your program's stack pointer. If it changes by more than the threshold amount,
+           Valgrind assumes your program is switching to a different stack, and Memcheck behaves differently than it would for a stack pointer change smaller than the threshold. Usually this heuristic
+           works well. However, if your program allocates large structures on the stack, this heuristic will be fooled, and Memcheck will subsequently report large numbers of invalid stack accesses.
+           This option allows you to change the threshold to a different value.
+
+           You should only consider use of this option if Valgrind's debug output directs you to do so. In that case it will tell you the new threshold you should specify.
+
+           In general, allocating large structures on the stack is a bad idea, because you can easily run out of stack space, especially on systems with limited memory or which expect to support large
+           numbers of threads each with a small stack, and also because the error checking performed by Memcheck is more effective for heap-allocated data than for stack-allocated data. If you have to
+           use this option, you may wish to consider rewriting your code to allocate on the heap rather than on the stack.
+
+       [1m--main-stacksize=<number> [default: use current 'ulimit' value][0m
+           Specifies the size of the main thread's stack.
+
+           To simplify its memory management, Valgrind reserves all required space for the main thread's stack at startup. That means it needs to know the required stack size at startup.
+
+           By default, Valgrind uses the current "ulimit" value for the stack size, or 16 MB, whichever is lower. In many cases this gives a stack size in the range 8 to 16 MB, which almost never
+           overflows for most applications.
+
+           If you need a larger total stack size, use [1m--main-stacksize [22mto specify it. Only set it as high as you need, since reserving far more space than you need (that is, hundreds of megabytes more
+           than you need) constrains Valgrind's memory allocators and may reduce the total amount of memory that Valgrind can use. This is only really of significance on 32-bit machines.
+
+           On Linux, you may request a stack of size up to 2GB. Valgrind will stop with a diagnostic message if the stack cannot be allocated.
+
+           [1m--main-stacksize [22monly affects the stack size for the program's initial thread. It has no bearing on the size of thread stacks, as Valgrind does not allocate those.
+
+           You may need to use both [1m--main-stacksize [22mand [1m--max-stackframe [22mtogether. It is important to understand that [1m--main-stacksize [22msets the maximum total stack size, whilst [1m--max-stackframe[0m
+           specifies the largest size of any one stack frame. You will have to work out the [1m--main-stacksize [22mvalue for yourself (usually, if your applications segfaults). But Valgrind will tell you
+           the needed [1m--max-stackframe [22msize, if necessary.
+
+           As discussed further in the description of [1m--max-stackframe[22m, a requirement for a large stack is a sign of potential portability problems. You are best advised to place all large data in
+           heap-allocated memory.
+
+       [1m--max-threads=<number> [default: 500][0m
+           By default, Valgrind can handle to up to 500 threads. Occasionally, that number is too small. Use this option to provide a different limit. E.g.  --max-threads=3000.
+
+       [1m--realloc-zero-bytes-frees=yes|no [default: yes for glibc no otherwise][0m
+           The behaviour of realloc() with a size of zero is implementation defined in C17 and undefined in C23. Valgrind tries to work in the same way as the underlying system and C runtime library
+           that it was configured and built on. However, if you use a different C runtime library then this default may be wrong. If the value is [1myes [22mthen [4mrealloc[24m will deallocate the memory and return
+           NULL. If the value is [1mno [22mthen [4mrealloc[24m will not deallocate the memory and the size will be handled as though it were one byte.
+
+           As an example, if you use Valgrind installed via a package on a Linux distro using GNU libc but link your test executable with musl libc or the JEMalloc library then consider using
+           --realloc-zero-bytes-frees=no.
+
+           Address Sanitizer has a similar and even wordier option allocator_frees_and_returns_null_on_realloc_zero.
+
+[1mMALLOC()-RELATED OPTIONS[0m
+       For tools that use their own version of malloc (e.g. Memcheck, Massif, Helgrind, DRD), the following options apply.
+
+       [1m--alignment=<number> [default: 8 or 16, depending on the platform][0m
+           By default Valgrind's [1mmalloc[22m, [1mrealloc[22m, etc, return a block whose starting address is 8-byte aligned or 16-byte aligned (the value depends on the platform and matches the platform default).
+           This option allows you to specify a different alignment. The supplied value must be greater than or equal to the default, less than or equal to 4096, and must be a power of two.
+
+       [1m--redzone-size=<number> [default: depends on the tool][0m
+           Valgrind's [1mmalloc, realloc, [22metc, add padding blocks before and after each heap block allocated by the program being run. Such padding blocks are called redzones. The default value for the
+           redzone size depends on the tool. For example, Memcheck adds and protects a minimum of 16 bytes before and after each block allocated by the client. This allows it to detect block underruns
+           or overruns of up to 16 bytes.
+
+           Increasing the redzone size makes it possible to detect overruns of larger distances, but increases the amount of memory used by Valgrind. Decreasing the redzone size will reduce the memory
+           needed by Valgrind but also reduces the chances of detecting over/underruns, so is not recommended.
+
+       [1m--xtree-memory=none|allocs|full [none][0m
+           Tools replacing Valgrind's [1mmalloc, realloc, [22metc, can optionally produce an execution tree detailing which piece of code is responsible for heap memory usage. See Execution Trees for a
+           detailed explanation about execution trees.
+
+           When set to [4mnone[24m, no memory execution tree is produced.
+
+           When set to [4mallocs[24m, the memory execution tree gives the current number of allocated bytes and the current number of allocated blocks.
+
+           When set to [4mfull[24m, the memory execution tree gives 6 different measurements : the current number of allocated bytes and blocks (same values as for [4mallocs[24m), the total number of allocated
+           bytes and blocks, the total number of freed bytes and blocks.
+
+           Note that the overhead in cpu and memory to produce an xtree depends on the tool. The overhead in cpu is small for the value [4mallocs[24m, as the information needed to produce this report is
+           maintained in any case by the tool. For massif and helgrind, specifying [4mfull[24m implies to capture a stack trace for each free operation, while normally these tools only capture an allocation
+           stack trace. For Memcheck, the cpu overhead for the value [4mfull[24m is small, as this can only be used in combination with [1m--keep-stacktraces=alloc-and-free [22mor
+           [1m--keep-stacktraces=alloc-then-free[22m, which already records a stack trace for each free operation. The memory overhead varies between 5 and 10 words per unique stacktrace in the xtree, plus
+           the memory needed to record the stack trace for the free operations, if needed specifically for the xtree.
+
+       [1m--xtree-memory-file=<filename> [default: xtmemory.kcg.%p][0m
+           Specifies that Valgrind should produce the xtree memory report in the specified file. Any [1m%p [22mor [1m%q [22msequences appearing in the filename are expanded in exactly the same way as they are for
+           [1m--log-file[22m. See the description of --log-file for details.
+
+           If the filename contains the extension [1m.ms[22m, then the produced file format will be a massif output file format. If the filename contains the extension [1m.kcg [22mor no extension is provided or
+           recognised, then the produced file format will be a callgrind output format.
+
+           See Execution Trees for a detailed explanation about execution trees formats.
+
+[1mUNCOMMON OPTIONS[0m
+       These options apply to all tools, as they affect certain obscure workings of the Valgrind core. Most people won't need to use them.
+
+       [1m--smc-check=<none|stack|all|all-non-file> [default: all-non-file for x86/amd64/s390x, stack for other archs][0m
+           This option controls Valgrind's detection of self-modifying code. If no checking is done, when a program executes some code, then overwrites it with new code, and executes the new code,
+           Valgrind will continue to execute the translations it made for the old code. This will likely lead to incorrect behaviour and/or crashes.
+
+           For "modern" architectures -- anything that's not x86, amd64 or s390x -- the default is [4mstack[24m. This is because a correct program must take explicit action to reestablish D-I cache coherence
+           following code modification. Valgrind observes and honours such actions, with the result that self-modifying code is transparently handled with zero extra cost.
+
+           For x86, amd64 and s390x, the program is not required to notify the hardware of required D-I coherence syncing. Hence the default is [4mall-non-file[24m, which covers the normal case of generating
+           code into an anonymous (non-file-backed) mmap'd area.
+
+           The meanings of the four available settings are as follows. No detection ([4mnone[24m), detect self-modifying code on the stack (which is used by GCC to implement nested functions) ([4mstack[24m), detect
+           self-modifying code everywhere ([4mall[24m), and detect self-modifying code everywhere except in file-backed mappings ([4mall-non-file[24m).
+
+           Running with [4mall[24m will slow Valgrind down noticeably. Running with [4mnone[24m will rarely speed things up, since very little code gets dynamically generated in most programs. The
+           [1mVALGRIND_DISCARD_TRANSLATIONS [22mclient request is an alternative to [1m--smc-check=all [22mand [1m--smc-check=all-non-file [22mthat requires more programmer effort but allows Valgrind to run your program
+           faster, by telling it precisely when translations need to be re-made.
+
+           [1m--smc-check=all-non-file [22mprovides a cheaper but more limited version of [1m--smc-check=all[22m. It adds checks to any translations that do not originate from file-backed memory mappings. Typical
+           applications that generate code, for example JITs in web browsers, generate code into anonymous mmaped areas, whereas the "fixed" code of the browser always lives in file-backed mappings.
+           [1m--smc-check=all-non-file [22mtakes advantage of this observation, limiting the overhead of checking to code which is likely to be JIT generated.
+
+       [1m--read-inline-info=<yes|no> [default: see below][0m
+           When enabled, Valgrind will read information about inlined function calls from DWARF3 debug info. This slows Valgrind startup and makes it use more memory (typically for each inlined piece
+           of code, 6 words and space for the function name), but it results in more descriptive stacktraces. Currently, this functionality is enabled by default only for Linux, FreeBSD, Android and
+           Solaris targets and only for the tools Memcheck, Massif, Helgrind and DRD. Here is an example of some stacktraces with [1m--read-inline-info=no[22m:
+
+               ==15380== Conditional jump or move depends on uninitialised value(s)
+               ==15380==    at 0x80484EA: main (inlinfo.c:6)
+               ==15380==
+               ==15380== Conditional jump or move depends on uninitialised value(s)
+               ==15380==    at 0x8048550: fun_noninline (inlinfo.c:6)
+               ==15380==    by 0x804850E: main (inlinfo.c:34)
+               ==15380==
+               ==15380== Conditional jump or move depends on uninitialised value(s)
+               ==15380==    at 0x8048520: main (inlinfo.c:6)
+
+           And here are the same errors with [1m--read-inline-info=yes[22m:
+
+               ==15377== Conditional jump or move depends on uninitialised value(s)
+               ==15377==    at 0x80484EA: fun_d (inlinfo.c:6)
+               ==15377==    by 0x80484EA: fun_c (inlinfo.c:14)
+               ==15377==    by 0x80484EA: fun_b (inlinfo.c:20)
+               ==15377==    by 0x80484EA: fun_a (inlinfo.c:26)
+               ==15377==    by 0x80484EA: main (inlinfo.c:33)
+               ==15377==
+               ==15377== Conditional jump or move depends on uninitialised value(s)
+               ==15377==    at 0x8048550: fun_d (inlinfo.c:6)
+               ==15377==    by 0x8048550: fun_noninline (inlinfo.c:41)
+               ==15377==    by 0x804850E: main (inlinfo.c:34)
+               ==15377==
+               ==15377== Conditional jump or move depends on uninitialised value(s)
+               ==15377==    at 0x8048520: fun_d (inlinfo.c:6)
+               ==15377==    by 0x8048520: main (inlinfo.c:35)
+
+       [1m--read-var-info=<yes|no> [default: no][0m
+           When enabled, Valgrind will read information about variable types and locations from DWARF3 debug info. This slows Valgrind startup significantly and makes it use significantly more memory,
+           but for the tools that can take advantage of it (Memcheck, Helgrind, DRD) it can result in more precise error messages. For example, here are some standard errors issued by Memcheck:
+
+               ==15363== Uninitialised byte(s) found during client check request
+               ==15363==    at 0x80484A9: croak (varinfo1.c:28)
+               ==15363==    by 0x8048544: main (varinfo1.c:55)
+               ==15363==  Address 0x80497f7 is 7 bytes inside data symbol "global_i2"
+               ==15363==
+               ==15363== Uninitialised byte(s) found during client check request
+               ==15363==    at 0x80484A9: croak (varinfo1.c:28)
+               ==15363==    by 0x8048550: main (varinfo1.c:56)
+               ==15363==  Address 0xbea0d0cc is on thread 1's stack
+               ==15363==  in frame #1, created by main (varinfo1.c:45)
+
+           And here are the same errors with [1m--read-var-info=yes[22m:
+
+               ==15370== Uninitialised byte(s) found during client check request
+               ==15370==    at 0x80484A9: croak (varinfo1.c:28)
+               ==15370==    by 0x8048544: main (varinfo1.c:55)
+               ==15370==  Location 0x80497f7 is 0 bytes inside global_i2[7],
+               ==15370==  a global variable declared at varinfo1.c:41
+               ==15370==
+               ==15370== Uninitialised byte(s) found during client check request
+               ==15370==    at 0x80484A9: croak (varinfo1.c:28)
+               ==15370==    by 0x8048550: main (varinfo1.c:56)
+               ==15370==  Location 0xbeb4a0cc is 0 bytes inside local var "local"
+               ==15370==  declared at varinfo1.c:46, in frame #1 of thread 1
+
+       [1m--vgdb-poll=<number> [default: 5000][0m
+           As part of its main loop, the Valgrind scheduler will poll to check if some activity (such as an external command or some input from a gdb) has to be handled by gdbserver. This activity
+           poll will be done after having run the given number of basic blocks (or slightly more than the given number of basic blocks). This poll is quite cheap so the default value is set relatively
+           low. You might further decrease this value if vgdb cannot use ptrace system call to interrupt Valgrind if all threads are (most of the time) blocked in a system call.
+
+       [1m--vgdb-shadow-registers=no|yes [default: no][0m
+           When activated, gdbserver will expose the Valgrind shadow registers to GDB. With this, the value of the Valgrind shadow registers can be examined or changed using GDB. Exposing shadow
+           registers only works with GDB version 7.1 or later.
+
+       [1m--vgdb-prefix=<prefix> [default: /tmp/vgdb-pipe][0m
+           To communicate with gdb/vgdb, the Valgrind gdbserver creates 3 files (2 named FIFOs and a mmap shared memory file). The prefix option controls the directory and prefix for the creation of
+           these files.
+
+       [1m--run-libc-freeres=<yes|no> [default: yes][0m
+           This option is only relevant when running Valgrind on Linux with GNU libc.
+
+           The GNU C library ([1mlibc.so[22m), which is used by all programs, may allocate memory for its own uses. Usually it doesn't bother to free that memory when the program ends—there would be no
+           point, since the Linux kernel reclaims all process resources when a process exits anyway, so it would just slow things down.
+
+           The glibc authors realised that this behaviour causes leak checkers, such as Valgrind, to falsely report leaks in glibc, when a leak check is done at exit. In order to avoid this, they
+           provided a routine called [1m__libc_freeres [22mspecifically to make glibc release all memory it has allocated. Memcheck therefore tries to run [1m__libc_freeres [22mat exit.
+
+           Unfortunately, in some very old versions of glibc, [1m__libc_freeres [22mis sufficiently buggy to cause segmentation faults. This was particularly noticeable on Red Hat 7.1. So this option is
+           provided in order to inhibit the run of [1m__libc_freeres[22m. If your program seems to run fine on Valgrind, but segfaults at exit, you may find that [1m--run-libc-freeres=no [22mfixes that, although at
+           the cost of possibly falsely reporting space leaks in libc.so.
+
+       [1m--run-cxx-freeres=<yes|no> [default: yes][0m
+           This option is only relevant when running Valgrind on Linux, FreeBSD or Solaris C++ programs using libstdc++.
+
+           The GNU Standard C++ library ([1mlibstdc++.so[22m), which is used by all C++ programs compiled with g++, may allocate memory for its own uses. Usually it doesn't bother to free that memory when
+           the program ends—there would be no point, since the kernel reclaims all process resources when a process exits anyway, so it would just slow things down.
+
+           The gcc authors realised that this behaviour causes leak checkers, such as Valgrind, to falsely report leaks in libstdc++, when a leak check is done at exit. In order to avoid this, they
+           provided a routine called [1m__gnu_cxx::__freeres [22mspecifically to make libstdc++ release all memory it has allocated. Memcheck therefore tries to run [1m__gnu_cxx::__freeres [22mat exit.
+
+           For the sake of flexibility and unforeseen problems with [1m__gnu_cxx::__freeres[22m, option [1m--run-cxx-freeres=no [22mexists, although at the cost of possibly falsely reporting space leaks in
+           libstdc++.so.
+
+       [1m--sim-hints=hint1,hint2,...[0m
+           Pass miscellaneous hints to Valgrind which slightly modify the simulated behaviour in nonstandard or dangerous ways, possibly to help the simulation of strange features. By default no hints
+           are enabled. Use with caution! Currently known hints are:
+
+           •   [1mlax-ioctls: [22mBe very lax about ioctl handling; the only assumption is that the size is correct. Doesn't require the full buffer to be initialised when writing. Without this, using some
+               device drivers with a large number of strange ioctl commands becomes very tiresome.
+
+           •   [1mfuse-compatible: [22mEnable special handling for certain system calls that may block in a FUSE file-system. This may be necessary when running Valgrind on a multi-threaded program that uses
+               one thread to manage a FUSE file-system and another thread to access that file-system.
+
+           •   [1menable-outer: [22mEnable some special magic needed when the program being run is itself Valgrind.
+
+           •   [1mno-inner-prefix: [22mDisable printing a prefix [1m> [22min front of each stdout or stderr output line in an inner Valgrind being run by an outer Valgrind. This is useful when running Valgrind
+               regression tests in an outer/inner setup. Note that the prefix [1m> [22mwill always be printed in front of the inner debug logging lines.
+
+           •   [1mno-nptl-pthread-stackcache: [22mThis hint is only relevant when running Valgrind on Linux; it is ignored on FreeBSD, Solaris and macOS.
+
+               The GNU glibc pthread library ([1mlibpthread.so[22m), which is used by pthread programs, maintains a cache of pthread stacks. When a pthread terminates, the memory used for the pthread stack
+               and some thread local storage related data structure are not always directly released. This memory is kept in a cache (up to a certain size), and is re-used if a new thread is started.
+
+               This cache causes the helgrind tool to report some false positive race condition errors on this cached memory, as helgrind does not understand the internal glibc cache synchronisation
+               primitives. So, when using helgrind, disabling the cache helps to avoid false positive race conditions, in particular when using thread local storage variables (e.g. variables using the
+               [1m__thread [22mqualifier).
+
+               When using the memcheck tool, disabling the cache ensures the memory used by glibc to handle __thread variables is directly released when a thread terminates.
+
+               Note: Valgrind disables the cache using some internal knowledge of the glibc stack cache implementation and by examining the debug information of the pthread library. This technique is
+               thus somewhat fragile and might not work for all glibc versions. This has been successfully tested with various glibc versions (e.g. 2.11, 2.16, 2.18) on various platforms.
+
+           •   [1mlax-doors: [22m(Solaris only) Be very lax about door syscall handling over unrecognised door file descriptors. Does not require that full buffer is initialised when writing. Without this,
+               programs using libdoor(3LIB) functionality with completely proprietary semantics may report large number of false positives.
+
+           •   [1mfallback-llsc: [22m(MIPS and ARM64 only): Enables an alternative implementation of Load-Linked (LL) and Store-Conditional (SC) instructions. The standard implementation gives more correct
+               behaviour, but can cause indefinite looping on certain processor implementations that are intolerant of extra memory references between LL and SC. So far this is known only to happen on
+               Cavium 3 cores. You should not need to use this flag, since the relevant cores are detected at startup and the alternative implementation is automatically enabled if necessary. There is
+               no equivalent anti-flag: you cannot force-disable the alternative implementation, if it is automatically enabled. The underlying problem exists because the "standard" implementation of
+               LL and SC is done by copying through LL and SC instructions into the instrumented code. However, tools may insert extra instrumentation memory references in between the LL and SC
+               instructions. These memory references are not present in the original uninstrumented code, and their presence in the instrumented code can cause the SC instructions to persistently
+               fail, leading to indefinite looping in LL-SC blocks. The alternative implementation gives correct behaviour of LL and SC instructions between threads in a process, up to and including
+               the ABA scenario. It also gives correct behaviour between a Valgrinded thread and a non-Valgrinded thread running in a different process, that communicate via shared memory, but only up
+               to and including correct CAS behaviour -- in this case the ABA scenario may not be correctly handled.
+
+       [1m--scheduling-quantum=<number> [default: 100000][0m
+           The [1m--scheduling-quantum [22moption controls the maximum number of basic blocks executed by a thread before releasing the lock used by Valgrind to serialise thread execution. Smaller values
+           give finer interleaving but increases the scheduling overhead. Finer interleaving can be useful to reproduce race conditions with helgrind or DRD. For more details about the Valgrind thread
+           serialisation scheme and its impact on performance and thread scheduling, see Scheduling and Multi-Thread Performance.
+
+       [1m--fair-sched=<no|yes|try> [default: no][0m
+           The [1m--fair-sched [22moption controls the locking mechanism used by Valgrind to serialise thread execution. The locking mechanism controls the way the threads are scheduled, and different
+           settings give different trade-offs between fairness and performance. For more details about the Valgrind thread serialisation scheme and its impact on performance and thread scheduling, see
+           Scheduling and Multi-Thread Performance.
+
+           •   The value [1m--fair-sched=yes [22mactivates a fair scheduler. In short, if multiple threads are ready to run, the threads will be scheduled in a round robin fashion. This mechanism is not
+               available on all platforms or Linux versions. If not available, using [1m--fair-sched=yes [22mwill cause Valgrind to terminate with an error.
+
+               You may find this setting improves overall responsiveness if you are running an interactive multithreaded program, for example a web browser, on Valgrind.
+
+           •   The value [1m--fair-sched=try [22mactivates fair scheduling if available on the platform. Otherwise, it will automatically fall back to [1m--fair-sched=no[22m.
+
+           •   The value [1m--fair-sched=no [22mactivates a scheduler which does not guarantee fairness between threads ready to run, but which in general gives the highest performance.
+
+       [1m--kernel-variant=variant1,variant2,...[0m
+           Handle system calls and ioctls arising from minor variants of the default kernel for this platform. This is useful for running on hacked kernels or with kernel modules which support
+           nonstandard ioctls, for example. Use with caution. If you don't understand what this option does then you almost certainly don't need it. Currently known variants are:
+
+           •   [1mbproc[22m: support the [1msys_broc [22msystem call on x86. This is for running on BProc, which is a minor variant of standard Linux which is sometimes used for building clusters.
+
+           •   [1mandroid-no-hw-tls[22m: some versions of the Android emulator for ARM do not provide a hardware TLS (thread-local state) register, and Valgrind crashes at startup. Use this variant to select
+               software support for TLS.
+
+           •   [1mandroid-gpu-sgx5xx[22m: use this to support handling of proprietary ioctls for the PowerVR SGX 5XX series of GPUs on Android devices. Failure to select this does not cause stability
+               problems, but may cause Memcheck to report false errors after the program performs GPU-specific ioctls.
+
+           •   [1mandroid-gpu-adreno3xx[22m: similarly, use this to support handling of proprietary ioctls for the Qualcomm Adreno 3XX series of GPUs on Android devices.
+
+       [1m--merge-recursive-frames=<number> [default: 0][0m
+           Some recursive algorithms, for example balanced binary tree implementations, create many different stack traces, each containing cycles of calls. A cycle is defined as two identical program
+           counter values separated by zero or more other program counter values. Valgrind may then use a lot of memory to store all these stack traces. This is a poor use of memory considering that
+           such stack traces contain repeated uninteresting recursive calls instead of more interesting information such as the function that has initiated the recursive call.
+
+           The option [1m--merge-recursive-frames=<number> [22minstructs Valgrind to detect and merge recursive call cycles having a size of up to [1m<number> [22mframes. When such a cycle is detected, Valgrind
+           records the cycle in the stack trace as a unique program counter.
+
+           The value 0 (the default) causes no recursive call merging. A value of 1 will cause stack traces of simple recursive algorithms (for example, a factorial implementation) to be collapsed. A
+           value of 2 will usually be needed to collapse stack traces produced by recursive algorithms such as binary trees, quick sort, etc. Higher values might be needed for more complex recursive
+           algorithms.
+
+           Note: recursive calls are detected by analysis of program counter values. They are not detected by looking at function names.
+
+       [1m--num-transtab-sectors=<number> [default: 6 for Android platforms, 16 for all others][0m
+           Valgrind translates and instruments your program's machine code in small fragments (basic blocks). The translations are stored in a translation cache that is divided into a number of
+           sections (sectors). If the cache is full, the sector containing the oldest translations is emptied and reused. If these old translations are needed again, Valgrind must re-translate and
+           re-instrument the corresponding machine code, which is expensive. If the "executed instructions" working set of a program is big, increasing the number of sectors may improve performance by
+           reducing the number of re-translations needed. Sectors are allocated on demand. Once allocated, a sector can never be freed, and occupies considerable space, depending on the tool and the
+           value of [1m--avg-transtab-entry-size [22m(about 40 MB per sector for Memcheck). Use the option [1m--stats=yes [22mto obtain precise information about the memory used by a sector and the allocation and
+           recycling of sectors.
+
+       [1m--avg-transtab-entry-size=<number> [default: 0, meaning use tool provided default][0m
+           Average size of translated basic block. This average size is used to dimension the size of a sector. Each tool provides a default value to be used. If this default value is too small, the
+           translation sectors will become full too quickly. If this default value is too big, a significant part of the translation sector memory will be unused. Note that the average size of a basic
+           block translation depends on the tool, and might depend on tool options. For example, the memcheck option [1m--track-origins=yes [22mincreases the size of the basic block translations. Use
+           [1m--avg-transtab-entry-size [22mto tune the size of the sectors, either to gain memory or to avoid too many retranslations.
+
+       [1m--aspace-minaddr=<address> [default: depends on the platform][0m
+           To avoid potential conflicts with some system libraries, Valgrind does not use the address space below [1m--aspace-minaddr [22mvalue, keeping it reserved in case a library specifically requests
+           memory in this region. So, some "pessimistic" value is guessed by Valgrind depending on the platform. On linux, by default, Valgrind avoids using the first 64MB even if typically there is
+           no conflict in this complete zone. You can use the option [1m--aspace-minaddr [22mto have your memory hungry application benefitting from more of this lower memory. On the other hand, if you
+           encounter a conflict, increasing aspace-minaddr value might solve it. Conflicts will typically manifest themselves with mmap failures in the low range of the address space. The provided
+           address must be page aligned and must be equal or bigger to 0x1000 (4KB). To find the default value on your platform, do something such as valgrind -d -d date 2>&1 | grep -i minaddr. Values
+           lower than 0x10000 (64KB) are known to create problems on some distributions.
+
+       [1m--valgrind-stacksize=<number> [default: 1MB][0m
+           For each thread, Valgrind needs its own 'private' stack. The default size for these stacks is largely dimensioned, and so should be sufficient in most cases. In case the size is too small,
+           Valgrind will segfault. Before segfaulting, a warning might be produced by Valgrind when approaching the limit.
+
+           Use the option [1m--valgrind-stacksize [22mif such an (unlikely) warning is produced, or Valgrind dies due to a segmentation violation. Such segmentation violations have been seen when demangling
+           huge C++ symbols.
+
+           If your application uses many threads and needs a lot of memory, you can gain some memory by reducing the size of these Valgrind stacks using the option [1m--valgrind-stacksize[22m.
+
+       [1m--show-emwarns=<yes|no> [default: no][0m
+           When enabled, Valgrind will emit warnings about its CPU emulation in certain cases. These are usually not interesting.
+
+       [1m--require-text-symbol=:sonamepatt:fnnamepatt[0m
+           When a shared object whose soname matches [4msonamepatt[24m is loaded into the process, examine all the text symbols it exports. If none of those match [4mfnnamepatt[24m, print an error message and
+           abandon the run. This makes it possible to ensure that the run does not continue unless a given shared object contains a particular function name.
+
+           Both [4msonamepatt[24m and [4mfnnamepatt[24m can be written using the usual [4m?[24m  and [4m*[24m wildcards. For example: [4m":*libc.so*:foo?bar"[24m. You may use characters other than a colon to separate the two patterns.
+           It is only important that the first character and the separator character are the same. For example, the above example could also be written [4m"Q*libc.so*Qfoo?bar"[24m. Multiple
+            [4m--require-text-symbol[24m flags are allowed, in which case shared objects that are loaded into the process will be checked against all of them.
+
+           The purpose of this is to support reliable usage of marked-up libraries. For example, suppose we have a version of GCC's [4mlibgomp.so[24m which has been marked up with annotations to support
+           Helgrind. It is only too easy and confusing to load the wrong, un-annotated [4mlibgomp.so[24m into the application. So the idea is: add a text symbol in the marked-up library, for example
+           [4mannotated_for_helgrind_3_6[24m, and then give the flag [4m--require-text-symbol=:*libgomp*so*:annotated_for_helgrind_3_6[24m so that when [4mlibgomp.so[24m is loaded, Valgrind scans its symbol table, and if
+           the symbol isn't present the run is aborted, rather than continuing silently with the un-marked-up library. Note that you should put the entire flag in quotes to stop shells expanding up
+           the [4m*[24m and [4m?[24m  wildcards.
+
+       [1m--soname-synonyms=syn1=pattern1,syn2=pattern2,...[0m
+           When a shared library is loaded, Valgrind checks for functions in the library that must be replaced or wrapped. For example, Memcheck replaces some string and memory functions (strchr,
+           strlen, strcpy, memchr, memcpy, memmove, etc.) with its own versions. Such replacements are normally done only in shared libraries whose soname matches a predefined soname pattern (e.g.
+           [4mlibc.so*[24m on linux). By default, no replacement is done for a statically linked binary or for alternative libraries, except for the allocation functions (malloc, free, calloc, memalign,
+           realloc, operator new, operator delete, etc.) Such allocation functions are intercepted by default in any shared library or in the executable if they are exported as global symbols. This
+           means that if a replacement allocation library such as tcmalloc is found, its functions are also intercepted by default. In some cases, the replacements allow [1m--soname-synonyms [22mto specify
+           one additional synonym pattern, giving flexibility in the replacement. Or to prevent interception of all public allocation symbols.
+
+           Currently, this flexibility is only allowed for the malloc related functions, using the synonym [4msomalloc[24m. This synonym is usable for all tools doing standard replacement of malloc related
+           functions (e.g. memcheck, helgrind, drd, massif, dhat).
+
+           •   Alternate malloc library: to replace the malloc related functions in a specific alternate library with soname [4mmymalloclib.so[24m (and not in any others), give the option
+               [1m--soname-synonyms=somalloc=mymalloclib.so[22m. A pattern can be used to match multiple libraries sonames. For example, [1m--soname-synonyms=somalloc=*tcmalloc* [22mwill match the soname of all
+               variants of the tcmalloc library (native, debug, profiled, ... tcmalloc variants).
+
+               Note: the soname of a elf shared library can be retrieved using the readelf utility.
+
+           •   Replacements in a statically linked library are done by using the [4mNONE[24m pattern. For example, if you link with [4mlibtcmalloc.a[24m, and only want to intercept the malloc related functions in
+               the executable (and standard libraries) themselves, but not any other shared libraries, you can give the option [1m--soname-synonyms=somalloc=NONE[22m. Note that a NONE pattern will match the
+               main executable and any shared library having no soname.
+
+           •   To only intercept allocation symbols in the default system libraries, but not in any other shared library or the executable defining public malloc or operator new related functions use
+               a non-existing library name like [1m--soname-synonyms=somalloc=nouserintercepts [22m(where [4mnouserintercepts[24m can be any non-existing library name).
+
+           •   Shared library of the dynamic (runtime) linker is excluded from searching for global public symbols, such as those for the malloc related functions (identified by [4msomalloc[24m synonym).
+
+       [1m--progress-interval=<number> [default: 0, meaning 'disabled'][0m
+           This is an enhancement to Valgrind's debugging output. It is unlikely to be of interest to end users.
+
+           When [4mnumber[24m is set to a non-zero value, Valgrind will print a one-line progress summary every [4mnumber[24m seconds. Valid settings for [4mnumber[24m are between 0 and 3600 inclusive. Here's some example
+           output with [4mnumber[24m set to 10:
+
+               PROGRESS: U 110s, W 113s, 97.3% CPU, EvC 414.79M, TIn 616.7k, TOut 0.5k, #thr 67
+               PROGRESS: U 120s, W 124s, 96.8% CPU, EvC 505.27M, TIn 636.6k, TOut 3.0k, #thr 64
+               PROGRESS: U 130s, W 134s, 97.0% CPU, EvC 574.90M, TIn 657.5k, TOut 3.0k, #thr 63
+
+           Each line shows:
+
+           •   [4mU[24m: total user time
+
+           •   [4mW[24m: total wallclock time
+
+           •   [4mCPU[24m: overall average cpu use
+
+           •   [4mEvC[24m: number of event checks. An event check is a backwards branch in the simulated program, so this is a measure of forward progress of the program
+
+           •   [4mTIn[24m: number of code blocks instrumented by the JIT
+
+           •   [4mTOut[24m: number of instrumented code blocks that have been thrown away
+
+           •   [4m#thr[24m: number of threads in the program
+
+           From the progress of these, it is possible to observe:
+
+           •   when the program is compute bound ([4mTIn[24m rises slowly, [4mEvC[24m rises rapidly)
+
+           •   when the program is in a spinloop ([4mTIn[24m/[4mTOut[24m fixed, [4mEvC[24m rises rapidly)
+
+           •   when the program is JIT-bound ([4mTIn[24m rises rapidly)
+
+           •   when the program is rapidly discarding code ([4mTOut[24m rises rapidly)
+
+           •   when the program is about to achieve some expected state ([4mEvC[24m arrives at some value you expect)
+
+           •   when the program is idling ([4mU[24m rises more slowly than [4mW[24m)
+
+[1mDEBUGGING VALGRIND OPTIONS[0m
+       There are also some options for debugging Valgrind itself. You shouldn't need to use them in the normal run of things. If you wish to see the list, use the [1m--help-debug [22moption.
+
+[1mMEMCHECK OPTIONS[0m
+       [1m--leak-check=<no|summary|yes|full> [default: summary][0m
+           When enabled, search for memory leaks when the client program finishes. If set to [4msummary[24m, it says how many leaks occurred. If set to [4mfull[24m or [4myes[24m, each individual leak will be shown in
+           detail and/or counted as an error, as specified by the options [1m--show-leak-kinds [22mand [1m--errors-for-leak-kinds[22m.
+
+           If [4m--xml=yes[24m is given, memcheck will automatically use the value [4m--leak-check=full[24m. You can use [1m--show-leak-kinds=none [22mto reduce the size of the xml output if you are not interested in the
+           leak results.
+
+       [1m--leak-resolution=<low|med|high> [default: high][0m
+           When doing leak checking, determines how willing Memcheck is to consider different backtraces to be the same for the purposes of merging multiple leaks into a single leak report. When set
+           to [4mlow[24m, only the first two entries need match. When [4mmed[24m, four entries have to match. When [4mhigh[24m, all entries need to match.
+
+           For hardcore leak debugging, you probably want to use [1m--leak-resolution=high [22mtogether with [1m--num-callers=40 [22mor some such large number.
+
+           Note that the [1m--leak-resolution [22msetting does not affect Memcheck's ability to find leaks. It only changes how the results are presented.
+
+       [1m--show-leak-kinds=<set> [default: definite,possible][0m
+           Specifies the leak kinds to show in a [4mfull[24m leak search, in one of the following ways:
+
+           •   a comma separated list of one or more of [1mdefinite indirect possible reachable[22m.
+
+           •   [1mall [22mto specify the complete set (all leak kinds). It is equivalent to [1m--show-leak-kinds=definite,indirect,possible,reachable[22m.
+
+           •   [1mnone [22mfor the empty set.
+
+       [1m--errors-for-leak-kinds=<set> [default: definite,possible][0m
+           Specifies the leak kinds to count as errors in a [4mfull[24m leak search. The [1m<set> [22mis specified similarly to [1m--show-leak-kinds[0m
+
+       [1m--leak-check-heuristics=<set> [default: all][0m
+           Specifies the set of leak check heuristics to be used during leak searches. The heuristics control which interior pointers to a block cause it to be considered as reachable. The heuristic
+           set is specified in one of the following ways:
+
+           •   a comma separated list of one or more of [1mstdstring length64 newarray multipleinheritance[22m.
+
+           •   [1mall [22mto activate the complete set of heuristics. It is equivalent to [1m--leak-check-heuristics=stdstring,length64,newarray,multipleinheritance[22m.
+
+           •   [1mnone [22mfor the empty set.
+
+           Note that these heuristics are dependent on the layout of the objects produced by the C++ compiler. They have been tested with some gcc versions (e.g. 4.4 and 4.7). They might not work
+           properly with other C++ compilers.
+
+       [1m--show-reachable=<yes|no> [22m, [1m--show-possibly-lost=<yes|no>[0m
+           These options provide an alternative way to specify the leak kinds to show:
+
+           •   [1m--show-reachable=no --show-possibly-lost=yes [22mis equivalent to [1m--show-leak-kinds=definite,possible[22m.
+
+           •   [1m--show-reachable=no --show-possibly-lost=no [22mis equivalent to [1m--show-leak-kinds=definite[22m.
+
+           •   [1m--show-reachable=yes [22mis equivalent to [1m--show-leak-kinds=all[22m.
+
+           Note that [1m--show-possibly-lost=no [22mhas no effect if [1m--show-reachable=yes [22mis specified.
+
+       [1m--xtree-leak=<no|yes> [no][0m
+           If set to yes, the results for the leak search done at exit will be output in a 'Callgrind Format' execution tree file. Note that this automatically sets the options [1m--leak-check=full [22mand
+           [1m--show-leak-kinds=all[22m, to allow xtree visualisation tools such as kcachegrind to select what kind to leak to visualize. The produced file will contain the following events:
+
+           •   [1mRB [22m: Reachable Bytes
+
+           •   [1mPB [22m: Possibly lost Bytes
+
+           •   [1mIB [22m: Indirectly lost Bytes
+
+           •   [1mDB [22m: Definitely lost Bytes (direct plus indirect)
+
+           •   [1mDIB [22m: Definitely Indirectly lost Bytes (subset of DB)
+
+           •   [1mRBk [22m: reachable Blocks
+
+           •   [1mPBk [22m: Possibly lost Blocks
+
+           •   [1mIBk [22m: Indirectly lost Blocks
+
+           •   [1mDBk [22m: Definitely lost Blocks
+
+           The increase or decrease for all events above will also be output in the file to provide the delta (increase or decrease) between 2 successive leak searches. For example, [1miRB [22mis the
+           increase of the [1mRB [22mevent, [1mdPBk [22mis the decrease of [1mPBk [22mevent. The values for the increase and decrease events will be zero for the first leak search done.
+
+           See Execution Tree
