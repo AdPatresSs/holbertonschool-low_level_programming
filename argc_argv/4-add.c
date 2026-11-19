@@ -2,25 +2,35 @@
 #include <stdlib.h>
 
 /**
- * main - add two numbers passed to the programm
+ * main - adds positive numbers passed as arguments
  * @argc: argument count
  * @argv: argument vector
  *
- * Return: 0 on success, 1 if fewer or more than two arguments are passed
+ * Return: 0 on success, 1 if an argument contains non-digit characters
  */
 int main(int argc, char *argv[])
 {
-	int num1, num2, sum;
+	int i, j;
+	int sum = 0;
 
-	if (argc != 3)
+	if (argc == 1)
 	{
-		printf("Error\n");
-		return (1);
+		printf("0\n");
+		return (0);
 	}
 
-	num1 = atoi(argv[1]);
-	num2 = atoi(argv[2]);
-	sum = num1 + num2;
+	for (i = 1; i < argc; i++)
+	{
+		for (j = 0; argv[i][j] != '\0'; j++)
+		{
+			if (argv[i][j] < '0' || argv[i][j] > '9')
+			{
+				printf("Error\n");
+				return (1);
+			}
+		}
+		sum += atoi(argv[i]);
+	}
 
 	printf("%d\n", sum);
 	return (0);
